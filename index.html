@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Theatre Seat Booking</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-100 p-6">
+
+  <h1 class="text-3xl font-bold mb-6 text-center">🎭 Theatre Seat Booking</h1>
+
+  <!-- Seat Grid -->
+  <div id="seatGrid" class="grid grid-cols-8 gap-2 max-w-xl mx-auto mb-8"></div>
+
+  <!-- Selected Seats -->
+  <div class="max-w-xl mx-auto bg-white p-4 rounded shadow">
+    <h2 class="text-xl font-semibold mb-3">Selected Seats</h2>
+    <div id="selectedSeats"></div>
+
+    <h3 class="mt-4 text-lg font-bold">Total: $<span id="totalPrice">0</span></h3>
+
+    <button id="confirmBtn" class="mt-4 w-full bg-blue-500 text-white py-2 rounded hover:bg-blue-600">
+      Confirm Booking
+    </button>
+  </div>
+
+<script>
+// CONFIG
+const rows = ["A","B","C","D","E"];
+const seatsPerRow = 8;
+
+const prices = {
+  adult: 15,
+  minor: 8
+};
+
+// MOCK TAKEN SEATS (later from Firebase)
+const takenSeats = ["A1", "B3", "C5"];
+
+// STATE
+let selectedSeats = {};
+
+// GENERATE SEATS
+const grid = document.getElementById("seatGrid");
+
+rows.forEach(row => {
+  for (let i = 1; i <= seatsPerRow; i++) {
+    const seatId = row + i;
+
+    const seat = document.createElement("div");
+    seat.innerText = seatId;
+    seat.className = "p-2 text-center rounded cursor-pointer";
+
+    if (takenSeats.includes(seatId)) {
+      seat.classList.add("bg-red-400", "cursor-not-allowed");
+    } else {
+      seat.classList.add("bg-green-400", "hover:bg-green-500");
+
+      seat.onclick = () => toggleSeat(seatId, seat);
+    }
+
+    grid.appendChild(seat);
+  }
+});
+
+// TOGGLE SEAT
+function toggleSeat(seatId, element) {
+  if (selectedSeats[seatId]) {
+    delete selectedSeats[seatId];
+    element.classList.remove("bg-yellow-400");
+    element.classList.add("bg-green-400");
+  } else {
+    selectedSeats[seatId] = "adult"; // default
+    element.classList.remove("bg-green-400");
+    element.classList.add("bg-yellow-400");
+  }
+
+  renderSelectedSeats();
+}
+
+// RENDER SELECTED LIST
+function renderSelectedSeats() {
+  const container = document.getElementById("selectedSeats");
+  container.innerHTML = "";
+
+  let total = 0;
+
+  Object.keys(selectedSeats).forEach(seatId => {
+    const type = selectedSeats[seatId];
+    total += prices[type];
+
+    const div = document.createElement("div");
+    div.className = "flex justify-between items-center mb-2";
+
+    div.innerHTML = `
+      <span>${seatId}</span>
+      <select onchange="changeType('${seatId}', this.value)" class="border p-1">
+        <option value="adult" ${type === "adult" ? "selected" : ""}>Adult ($15)</option>
+        <option value="minor" ${type === "minor" ? "selected" : ""}>Minor ($8)</option>
+      </select>
+    `;
+
+    container.appendChild(div);
+  });
+
+  document.getElementById("totalPrice").innerText = total;
+}
+
+// CHANGE TYPE
+function changeType(seatId, newType) {
+  selectedSeats[seatId] = newType;
+  renderSelectedSeats();
+}
+
+// CONFIRM BOOKING
+document.getElementById("confirmBtn").onclick = () => {
+  if (Object.keys(selectedSeats).length === 0) {
+    alert("Please select at least one seat.");
+    return;
+  }
+
+  console.log("Booking data:", selectedSeats);
+  alert("Booking simulated! Check console.");
+
+  // later: send to Firebase
+};
+</script>
+
+</body>
+</html>
