@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Theatre Seat Booking</title>
+<script src="https://cdn.tailwindcss.com"></script>
+
+<style>
+  body {
+    background: #000;
+    color: #f5f5f7;
+    font-family: -apple-system, BlinkMacSystemFont, "San Francisco", sans-serif;
+  }
+
+  .glass {
+    background: rgba(255,255,255,0.05);
+    backdrop-filter: blur(20px);
+    border: 1px solid rgba(255,255,255,0.08);
+  }
+
+  .seat {
+    transition: all 0.2s ease;
+  }
+
+  .seat:hover {
+    transform: scale(1.05);
+  }
+
+  .selected {
+    background: #0a84ff !important;
+  }
+
+  .taken {
+    background: #2c2c2e !important;
+    color: #666;
+  }
+
+</style>
+</head>
+
+<body class="p-6">
+
+<h1 class="text-3xl font-semibold text-center mb-8 tracking-tight">
+  🎭 Theatre Booking
+</h1>
+
+<!-- Seat Grid -->
+<div class="glass rounded-2xl p-6 max-w-2xl mx-auto mb-8 shadow-2xl">
+  <div id="seatGrid" class="grid grid-cols-8 gap-3"></div>
+</div>
+
+<!-- Selected Seats Panel -->
+<div class="glass rounded-2xl p-6 max-w-2xl mx-auto shadow-2xl">
+
+  <h2 class="text-xl font-medium mb-4 text-gray-200">
+    Selected Seats
+  </h2>
+
+  <div id="selectedSeats" class="space-y-3"></div>
+
+  <div class="flex justify-between items-center mt-6 pt-4 border-t border-gray-700">
+    <span class="text-lg text-gray-400">Total</span>
+    <span class="text-2xl font-semibold">$<span id="totalPrice">0</span></span>
+  </div>
+
+  <button id="confirmBtn"
+    class="mt-6 w-full bg-white text-black py-3 rounded-xl font-medium hover:bg-gray-200 transition">
+    Confirm Booking
+  </button>
+
+</div>
+
+<script>
+// CONFIG
+const rows = ["A","B","C","D","E"];
+const seatsPerRow = 8;
+
+const prices = {
+  adult: 15,
+  minor: 8
+};
+
+const takenSeats = ["A1", "B3", "C5"];
+let selectedSeats = {};
+
+// GENERATE SEATS
+const grid = document.getElementById("seatGrid");
+
+rows.forEach(row => {
+  for (let i = 1; i <= seatsPerRow; i++) {
+    const seatId = row + i;
+
+    const seat = document.createElement("div");
+    seat.innerText = seatId;
+
+    seat.className = `
+      seat text-center py-2 rounded-lg text-sm font-medium
+      ${takenSeats.includes(seatId)
+        ? "taken cursor-not-allowed"
+        : "bg-gray-800 hover:bg-gray-700 cursor-pointer"}
+    `;
+
+    if (!takenSeats.includes(seatId)) {
+      seat.onclick = () => toggleSeat(seatId, seat);
+    }
+
+    grid.appendChild(seat);
+  }
+});
+
+// TOGGLE SEAT
+function toggleSeat(seatId, element) {
+  if (selectedSeats[seatId]) {
+    delete selectedSeats[seatId];
+    element.classList.remove("selected");
+  } else {
+    selectedSeats[seatId] = "adult";
+    element.classList.add("selected");
+  }
+
+  renderSelectedSeats();
+}
+
+// RENDER SELECTED LIST
+function renderSelectedSeats() {
+  const container = document.getElementById("selectedSeats");
+  container.innerHTML = "";
+
+  let total = 0;
+
+  Object.keys(selectedSeats).forEach(seatId => {
+    const type = selectedSeats[seatId];
+    total += prices[type];
+
+    const div = document.createElement("div");
+    div.className = "flex justify-between items-center";
+
+    div.innerHTML = `
+      <span class="text-gray-300">${seatId}</span>
+
+      <select onchange="changeType('${seatId}', this.value)"
+        class="bg-black border border-gray-700 rounded-lg px-2 py-1 text-sm focus:outline-none">
+        <option value="adult" ${type === "adult" ? "selected" : ""}>Adult ($15)</option>
+        <option value="minor" ${type === "minor" ? "selected" : ""}>Minor ($8)</option>
+      </select>
+    `;
+
+    container.appendChild(div);
+  });
+
+  document.getElementById("totalPrice").innerText = total;
+}
+
+// CHANGE TYPE
+function changeType(seatId, newType) {
+  selectedSeats[seatId] = newType;
+  renderSelectedSeats();
+}
+
+// CONFIRM BOOKING
+document.getElementById("confirmBtn").onclick = () => {
+  if (Object.keys(selectedSeats).length === 0) {
+    alert("Please select at least one seat.");
+    return;
+  }
+
+  console.log("Booking data:", selectedSeats);
+  alert("Booking confirmed ✨");
+};
+</script>
+
+</body>
+</html>
