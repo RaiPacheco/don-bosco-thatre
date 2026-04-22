@@ -1,46 +1,92 @@
-// 1. Import Firebase SDKs from the Google CDN
-import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-import { getFirestore, collection, addDoc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+// --- CONFIGURATION ---
+const ROWS = ["A", "B", "C", "D", "E"];
+const SEATS_PER_ROW = 8;
+const PRICES = {
+  adult: 15,
+  minor: 8
+};
+const TAKEN_SEATS = ["A1", "B3", "C5"];
 
-// 2. Your Firebase Configuration
-const firebaseConfig = {
-  apiKey: "AIzaSyD30Bvb6TR_B-TymCbtBQgQFymzsIB2WBw",
-  authDomain: "github-project-dbcde.firebaseapp.com",
-  projectId: "github-project-dbcde",
-  storageBucket: "github-project-dbcde.firebasestorage.app",
-  messagingSenderId: "470312105710",
-  appId: "1:470312105710:web:5a8fb920b1d5c74db965ff"
+let selectedSeats = {}; // Format: { "A2": "adult" }
+
+// --- DOM ELEMENTS ---
+const grid = document.getElementById("seatGrid");
+const selectedContainer = document.getElementById("selectedSeats");
+const totalPriceDisplay = document.getElementById("totalPrice");
+const confirmBtn = document.getElementById("confirmBtn");
+
+// --- INITIALIZE SEATS ---
+function initGrid() {
+  ROWS.forEach(row => {
+    for (let i = 1; i <= SEATS_PER_ROW; i++) {
+      const seatId = row + i;
+      const isTaken = TAKEN_SEATS.includes(seatId);
+      
+      const seat = document.createElement("div");
+      seat.innerText = seatId;
+      seat.className = `seat text-center py-2 rounded-lg text-sm font-medium 
+        ${isTaken ? "taken cursor-not-allowed" : "bg-gray-800 hover:bg-gray-700 cursor-pointer"}`;
+
+      if (!isTaken) {
+        seat.onclick = () => toggleSeat(seatId, seat);
+      }
+      
+      grid.appendChild(seat);
+    }
+  });
+}
+
+// --- LOGIC FUNCTIONS ---
+function toggleSeat(seatId, element) {
+  if (selectedSeats[seatId]) {
+    delete selectedSeats[seatId];
+    element.classList.remove("selected");
+  } else {
+    selectedSeats[seatId] = "adult";
+    element.classList.add("selected");
+  }
+  renderSelectedSeats();
+}
+
+function changeType(seatId, newType) {
+  selectedSeats[seatId] = newType;
+  renderSelectedSeats();
+}
+
+function renderSelectedSeats() {
+  selectedContainer.innerHTML = "";
+  let total = 0;
+
+  Object.keys(selectedSeats).forEach(seatId => {
+    const type = selectedSeats[seatId];
+    total += PRICES[type];
+
+    const row = document.createElement("div");
+    row.className = "flex justify-between items-center";
+    row.innerHTML = `
+      <span class="text-gray-300">${seatId}</span>
+      <select onchange="changeType('${seatId}', this.value)" 
+              class="bg-black border border-gray-700 rounded-lg px-2 py-1 text-sm focus:outline-none">
+        <option value="adult" ${type === "adult" ? "selected" : ""}>Adult ($15)</option>
+        <option value="minor" ${type === "minor" ? "selected" : ""}>Minor ($8)</option>
+      </select>
+    `;
+    selectedContainer.appendChild(row);
+  });
+
+  totalPriceDisplay.innerText = total;
+}
+
+// --- EVENT HANDLERS ---
+confirmBtn.onclick = () => {
+  const seatCount = Object.keys(selectedSeats).length;
+  if (seatCount === 0) {
+    alert("Please select at least one seat.");
+    return;
+  }
+  console.log("Booking Confirmed:", selectedSeats);
+  alert(`Booking confirmed for ${seatCount} seat(s)! ✨`);
 };
 
-// 3. Initialize Firebase & Firestore
-const app = initializeApp(firebaseConfig);
-const db = getFirestore(app);
-
-console.log("Firestore Database connected successfully!");
-
-// 4. Handle Form Submission
-const bookingForm = document.getElementById('booking-form');
-
-if (bookingForm) {
-    bookingForm.addEventListener('submit', async (e) => {
-        e.preventDefault();
-
-        const nameValue = document.getElementById('customer-name').value;
-        const seatValue = document.getElementById('seat-choice').value;
-
-        try {
-            // Save to a collection named "bookings"
-            const docRef = await addDoc(collection(db, "bookings"), {
-                customer: nameValue,
-                seat: seatValue,
-                timestamp: new Date()
-            });
-
-            alert("Booking Successful! ID: " + docRef.id);
-            bookingForm.reset();
-        } catch (error) {
-            console.error("Error saving to Firestore: ", error);
-            alert("Error: " + error.message);
-        }
-    });
-}
+// Start the app
+initGrid();
