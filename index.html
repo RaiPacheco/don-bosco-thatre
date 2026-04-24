@@ -42,13 +42,17 @@
     </div>
 
     <script type="module">
-        // 1. Import Firebase functions via CDN
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
-        import { getFirestore, collection, addDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+        import { 
+            getFirestore, 
+            collection, 
+            addDoc, 
+            serverTimestamp,
+            getDocs 
+        } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
-        // 2. Your Firebase configuration
         const firebaseConfig = {
-            apiKey: "AIzaSyD30Bvb6TR_B-TymCbtBQgQFymzsIB2WBw",
+            apiKey: "YOUR_API_KEY",
             authDomain: "github-project-dbcde.firebaseapp.com",
             projectId: "github-project-dbcde",
             storageBucket: "github-project-dbcde.firebasestorage.app",
@@ -56,36 +60,63 @@
             appId: "1:470312105710:web:5a8fb920b1d5c74db965ff"
         };
 
-        // 3. Initialize Firebase & Firestore
         const app = initializeApp(firebaseConfig);
         const db = getFirestore(app);
 
-        console.log("Firestore Connected successfully!");
-
-        // --- App Logic ---
         const rows = ["A","B","C","D","E"];
         const seatsPerRow = 8;
         const prices = { adult: 15, minor: 8 };
-        const takenSeats = ["A1", "B3", "C5"];
+
         let selectedSeats = {};
+        let takenSeats = [];
 
         const grid = document.getElementById("seatGrid");
         const container = document.getElementById("selectedSeats");
 
-        // Create the Seat Grid
-        rows.forEach(row => {
-            for (let i = 1; i <= seatsPerRow; i++) {
-                const seatId = row + i;
-                const seat = document.createElement("div");
-                seat.innerText = seatId;
-                seat.className = `seat text-center py-2 rounded-lg text-sm font-medium ${takenSeats.includes(seatId) ? "taken cursor-not-allowed" : "bg-gray-800 hover:bg-gray-700 cursor-pointer"}`;
-                
-                if (!takenSeats.includes(seatId)) {
-                    seat.onclick = () => toggleSeat(seatId, seat);
+        // 🔥 Load taken seats from Firestore
+        async function loadTakenSeats() {
+            const querySnapshot = await getDocs(collection(db, "bookings"));
+            
+            takenSeats = [];
+
+            querySnapshot.forEach(doc => {
+                const data = doc.data();
+                const seats = data.seats;
+
+                Object.keys(seats).forEach(seatId => {
+                    takenSeats.push(seatId);
+                });
+            });
+
+            renderSeatGrid();
+        }
+
+        // 🎟 Render seat grid
+        function renderSeatGrid() {
+            grid.innerHTML = "";
+
+            rows.forEach(row => {
+                for (let i = 1; i <= seatsPerRow; i++) {
+                    const seatId = row + i;
+                    const seat = document.createElement("div");
+                    seat.innerText = seatId;
+
+                    const isTaken = takenSeats.includes(seatId);
+
+                    seat.className = `seat text-center py-2 rounded-lg text-sm font-medium ${
+                        isTaken 
+                        ? "taken cursor-not-allowed" 
+                        : "bg-gray-800 hover:bg-gray-700 cursor-pointer"
+                    }`;
+
+                    if (!isTaken) {
+                        seat.onclick = () => toggleSeat(seatId, seat);
+                    }
+
+                    grid.appendChild(seat);
                 }
-                grid.appendChild(seat);
-            }
-        });
+            });
+        }
 
         function toggleSeat(seatId, element) {
             if (selectedSeats[seatId]) {
@@ -101,18 +132,22 @@
         function renderSelectedSeats() {
             container.innerHTML = "";
             let total = 0;
+
             Object.keys(selectedSeats).forEach(seatId => {
                 const type = selectedSeats[seatId];
                 total += prices[type];
+
                 const div = document.createElement("div");
                 div.className = "flex justify-between items-center";
+
                 div.innerHTML = `
                     <span class="text-gray-300">${seatId}</span>
-                    <select class="bg-black border border-gray-700 rounded-lg px-2 py-1 text-sm focus:outline-none">
+                    <select class="bg-black border border-gray-700 rounded-lg px-2 py-1 text-sm">
                         <option value="adult" ${type === "adult" ? "selected" : ""}>Adult ($15)</option>
                         <option value="minor" ${type === "minor" ? "selected" : ""}>Minor ($8)</option>
                     </select>
                 `;
+
                 container.appendChild(div);
 
                 div.querySelector('select').addEventListener('change', (e) => {
@@ -120,38 +155,41 @@
                     renderSelectedSeats();
                 });
             });
+
             document.getElementById("totalPrice").innerText = total;
         }
 
-        // 4. SAVE TO FIREBASE ON CLICK
+        // 💾 Save booking
         document.getElementById("confirmBtn").onclick = async () => {
             const seatCount = Object.keys(selectedSeats).length;
-            
+
             if (seatCount === 0) {
                 alert("Please select at least one seat first!");
                 return;
             }
 
             try {
-                // This creates a record in your 'bookings' collection
                 const docRef = await addDoc(collection(db, "bookings"), {
                     seats: selectedSeats,
                     totalPrice: document.getElementById("totalPrice").innerText,
                     timestamp: serverTimestamp()
                 });
 
-                alert("Success! Booking saved to database. ID: " + docRef.id);
-                
-                // Reset the UI
+                alert("Success! Booking saved. ID: " + docRef.id);
+
                 selectedSeats = {};
-                document.querySelectorAll('.seat').forEach(s => s.classList.remove('selected'));
                 renderSelectedSeats();
-                
+
+                await loadTakenSeats(); // 🔥 refresh taken seats
+
             } catch (error) {
-                console.error("Error saving booking: ", error);
-                alert("Error saving booking. Check the console.");
+                console.error(error);
+                alert("Error saving booking.");
             }
         };
+
+        // 🚀 Initial load
+        loadTakenSeats();
     </script>
 </body>
 </html>
